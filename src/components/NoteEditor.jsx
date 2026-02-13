@@ -4,21 +4,23 @@ const NoteEditor = ({ content, setContent, onDelete }) => {
   const editorRef = useRef(null);
   const isFirstRender = useRef(true);
   
-  // State to track which styles are active
   const [activeStyles, setActiveStyles] = useState({
     bold: false,
     italic: false,
     underline: false
   });
 
+  // Load content once and focus the editor
   useEffect(() => {
     if (isFirstRender.current && editorRef.current) {
       editorRef.current.innerHTML = content;
       isFirstRender.current = false;
+      
+      // Professional touch: Auto-focus the end of the content
+      editorRef.current.focus();
     }
   }, [content]);
 
-  // Function to check and update active styles based on cursor position
   const updateActiveStyles = () => {
     setActiveStyles({
       bold: document.queryCommandState('bold'),
@@ -30,33 +32,44 @@ const NoteEditor = ({ content, setContent, onDelete }) => {
   const format = (command) => {
     document.execCommand(command, false, null);
     editorRef.current.focus();
-    updateActiveStyles(); // Update immediately after clicking
+    updateActiveStyles();
   };
 
   return (
-    <div className="note-workspace">
+    <div className="editor-wrapper">
       <div className="editor-toolbar">
         <div className="format-group">
           <button 
+            type="button"
             className={activeStyles.bold ? 'active' : ''} 
             onClick={() => format('bold')}
+            title="Bold"
           >
             B
           </button>
           <button 
+            type="button"
             className={activeStyles.italic ? 'active' : ''} 
             onClick={() => format('italic')}
+            title="Italic"
           >
             I
           </button>
           <button 
+            type="button"
             className={activeStyles.underline ? 'active' : ''} 
             onClick={() => format('underline')}
+            title="Underline"
           >
             U
           </button>
         </div>
-        <button className="delete-action" onClick={onDelete}>
+
+        <button 
+          type="button"
+          className="delete-action" 
+          onClick={onDelete}
+        >
           Delete Note
         </button>
       </div>
@@ -66,9 +79,10 @@ const NoteEditor = ({ content, setContent, onDelete }) => {
         contentEditable
         ref={editorRef}
         onInput={() => setContent(editorRef.current.innerHTML)}
-        onKeyUp={updateActiveStyles}    // Check state when typing/moving cursor
-        onMouseUp={updateActiveStyles}  // Check state when clicking
+        onKeyUp={updateActiveStyles}
+        onMouseUp={updateActiveStyles}
         placeholder="Start writing your thoughts..."
+        spellCheck="true"
       />
     </div>
   );

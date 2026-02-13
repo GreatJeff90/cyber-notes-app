@@ -1,72 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './index.css';
-import { useLocalStorage } from './hooks/useLocalStorage';
+import { useNotesDB } from './hooks/useNotesDB';
 import NoteEditor from './components/NoteEditor';
 import Sidebar from './components/Sidebar';
 
 function App() {
-  const [notes, setNotes] = useLocalStorage('group9-notes', [
-    { id: Date.now(), body: 'Welcome to your dashboard!' }
-  ]);
-  const [activeNoteId, setActiveNoteId] = useState(notes[0]?.id);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile toggle state
+  const { notes, saveNote, removeNote, loading } = useNotesDB();
+  const [activeNoteId, setActiveNoteId] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Set first note as active once DB loads
+  useEffect(() => {
+    if (!loading && notes.length > 0 && !activeNoteId) {
+      setActiveNoteId(notes[0].id);
+    }
+  }, [loading, notes, activeNoteId]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
-  const handleSelectNote = (id) => {
-    setActiveNoteId(id);
-    setIsSidebarOpen(false); // Close sidebar on mobile after selection
-  };
-
   const addNote = () => {
     const newNote = { id: Date.now(), body: '' };
-    setNotes([newNote, ...notes]);
+    saveNote(newNote);
     setActiveNoteId(newNote.id);
     setIsSidebarOpen(false);
   };
 
+  const updateNote = (id, newBody) => {
+    const updatedNote = { id, body: newBody };
+    saveNote(updatedNote);
+  };
+
   const deleteNote = (id) => {
-    const remaining = notes.filter(n => n.id !== id);
-    setNotes(remaining);
+    removeNote(id);
     if (activeNoteId === id) {
-      setActiveNoteId(remaining.length > 0 ? remaining[0].id : null);
+      const nextNote = notes.find(n => n.id !== id);
+      setActiveNoteId(nextNote ? nextNote.id : null);
     }
   };
 
+  if (loading) return <div className="loading-screen">Loading your workspace...</div>;
+
   return (
     <div className={`dashboard-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-      {/* Mobile Menu Toggle Button */}
-      <button className="mobile-toggle" onClick={toggleSidebar}>
+      <button className="mobile-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
         {isSidebarOpen ? '✕' : '☰'}
       </button>
 
-      {/* Overlay for mobile to close sidebar when clicking outside */}
-      {isSidebarOpen && <div className="sidebar-overlay" onClick={toggleSidebar} />}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />}
 
       <Sidebar 
         notes={notes}
         activeNoteId={activeNoteId}
-        setActiveNoteId={handleSelectNote}
+        setActiveNoteId={(id) => { setActiveNoteId(id); setIsSidebarOpen(false); }}
         addNote={addNote}
         deleteNote={deleteNote}
       />
 
       <main className="main-content">
         {activeNote ? (
-          <div className="editor-wrapper">
-             <NoteEditor 
-                key={activeNote.id}
-                content={activeNote.body}
-                setContent={(content) => updateNote(activeNote.id, content)}
-                onDelete={() => deleteNote(activeNote.id)}
-              />
-          </div>
+          <NoteEditor 
+            key={activeNote.id}
+            content={activeNote.body}
+            setContent={(content) => updateNote(activeNote.id, content)}
+            onDelete={() => deleteNote(activeNote.id)}
+          />
         ) : (
           <div className="empty-state">
-            <p>No note selected</p>
-            <button className="btn-primary" onClick={addNote}>Create New Note</button>
+            <p>Your workspace is empty.</p>
+            <button className="btn-primary" onClick={addNote}>Create First Note</button>
           </div>
         )}
       </main>
